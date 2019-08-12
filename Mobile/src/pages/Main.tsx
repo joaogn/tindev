@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-community/async-storage';
-import { SafeAreaView, View, Image, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import io from 'socket.io-client';
+import { SafeAreaView, View, Image, StyleSheet, Text, TouchableOpacity, DeviceEventEmitter } from 'react-native';
 import {
     NavigationParams,
     NavigationScreenProp,
@@ -12,6 +13,7 @@ import api from '../services/api';
 import logo from '../assets/logo.png';
 import dislike from '../assets/dislike.png';
 import like from '../assets/like.png';
+import itsamatch from '../assets/itsamatch.png';
 
 const styles = StyleSheet.create({
     container: {
@@ -71,6 +73,7 @@ const styles = StyleSheet.create({
     buttonsContainer: {
         flexDirection: 'row',
         marginBottom: 30,
+        zIndex: 0,
     },
     button: {
         width: 50,
@@ -89,6 +92,47 @@ const styles = StyleSheet.create({
             height: 2,
         },
     },
+    matchContainer: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        justifyContent: 'center',
+        alignItems: 'center',
+
+    },
+    matchImage: {
+        height: 60,
+        resizeMode: 'contain',
+    },
+    matchAvatar: {
+        width: 160,
+        height: 160,
+        borderRadius: 80,
+        borderWidth: 5,
+        borderColor: '#fff',
+        marginVertical: 30,
+    },
+    matchName: {
+       fontSize: 26,
+       fontWeight: 'bold',
+       color: '#fff',
+    },
+    matchBio: {
+        marginTop: 10,
+        fontSize: 16,
+        color: 'rgba(255,255,255,0.8)',
+        lineHeight: 24,
+        textAlign: 'center',
+        paddingHorizontal: 30,
+
+    },
+    matchButton: {
+        marginTop: 30,
+        fontSize: 16,
+        color: 'rgba(255,255,255,0.8)',
+        textAlign: 'center',
+        fontWeight: 'bold',
+    },
+
 });
 
 interface User {
@@ -108,7 +152,20 @@ interface NavigationProps {
 export default function Main({ navigation }: Props) {
     const id = navigation.getParam('user');
     const [users, setUsers] = useState<User[]>([]);
+     const [matchDev, setMatchDev] = useState< User | null >(null);
     console.log(id);
+
+    useEffect(() => {
+        const socket = io('http://192.168.1.2:3333', {
+          query: { user: id },
+        });
+
+        socket.on('match', (dev:User) => {
+          setMatchDev(dev);
+        });
+      }, [id]);
+
+
     useEffect(() => {
         async function loadUsers() {
             const response = await api.get('/api/devs/all', {
@@ -152,12 +209,11 @@ export default function Main({ navigation }: Props) {
           <Image style={styles.logo} source={logo} />
         </TouchableOpacity>
 
-
         <View style={styles.cardsContainer}>
           { users.length === 0 ? <Text style={styles.empty}>Acabou :(</Text>
           : (
             users.map((user, index) => (
-              <View key={user._id} style={[styles.card, { zIndex: users.length - index }]}>
+              <View key={user._id} style={[styles.card, { zIndex: (users.length - index) }]}>
                 <Image style={styles.avatar} source={{ uri: user.avatar }} />
                 <View style={styles.footer}>
                   <Text style={styles.name}>{user.name}</Text>
@@ -179,6 +235,18 @@ export default function Main({ navigation }: Props) {
           </TouchableOpacity>
         </View>
          )}
+
+
+        { matchDev && (
+        <View style={[styles.matchContainer, { zIndex: users.length }]}>
+          <Image style={styles.matchImage} source={itsamatch} />
+          <Image style={styles.matchAvatar} source={{ uri: matchDev.avatar }} />
+          <Text style={styles.matchName}>{matchDev.name}</Text>
+          <Text style={styles.matchBio}>{matchDev.bio}</Text>
+          <TouchableOpacity onPress={() => setMatchDev(null)}><Text style={styles.matchButton}>Fechar</Text></TouchableOpacity>
+        </View>
+        )
+        }
 
       </SafeAreaView>
     );
